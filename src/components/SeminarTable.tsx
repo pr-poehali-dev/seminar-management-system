@@ -34,6 +34,7 @@ export default function SeminarTable() {
   const dispatch = useAppDispatch();
   const {
     filteredSeminars,
+    users,
     loading,
     currentType,
     searchQuery,
@@ -58,10 +59,15 @@ export default function SeminarTable() {
     }
   };
 
+  const getSpeakerName = (userId: number) => {
+    const user = users.find(u => u.id === userId);
+    return user ? user.fullName : 'Неизвестный спикер';
+  };
+
   const tabs = [
-    { key: 'future', label: 'Будущие' },
+    { key: 'upcoming', label: 'Будущие' },
     { key: 'history', label: 'История' },
-    { key: 'request', label: 'Заявки на семинар' },
+    { key: 'application', label: 'Заявки на семинар' },
   ] as const;
 
   return (
@@ -155,13 +161,13 @@ export default function SeminarTable() {
         <Table>
           <TableHeader>
             <TableRow>
-              {currentType === 'future' && <TableHead className="w-12"></TableHead>}
+              {currentType === 'upcoming' && <TableHead className="w-12"></TableHead>}
               <TableHead className="min-w-[200px]">Название</TableHead>
               <TableHead className="min-w-[150px] hidden sm:table-cell">Спикер</TableHead>
-              {currentType === 'request' && <TableHead className="min-w-[120px] hidden md:table-cell">Номер телефона</TableHead>}
+              {currentType === 'application' && <TableHead className="min-w-[120px] hidden md:table-cell">Номер телефона</TableHead>}
               <TableHead className="min-w-[100px]">Дата</TableHead>
               {currentType === 'history' && <TableHead className="w-20 hidden sm:table-cell">Лайки</TableHead>}
-              {currentType !== 'request' && <TableHead className="w-12"></TableHead>}
+              {currentType !== 'application' && <TableHead className="w-12"></TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -178,47 +184,54 @@ export default function SeminarTable() {
                 </TableCell>
               </TableRow>
             ) : (
-              paginatedSeminars.map((seminar) => (
-                <TableRow key={seminar.id}>
-                  {currentType === 'future' && (
+              paginatedSeminars.map((seminar) => {
+                const speaker = getSpeakerName(seminar.userId);
+                const user = users.find(u => u.id === seminar.userId);
+                
+                return (
+                  <TableRow key={seminar.id}>
+                    {currentType === 'upcoming' && (
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedIds.includes(seminar.id)}
+                          onCheckedChange={() => dispatch(toggleSelectSeminar(seminar.id))}
+                        />
+                      </TableCell>
+                    )}
                     <TableCell>
-                      <Checkbox
-                        checked={selectedIds.includes(seminar.id)}
-                        onCheckedChange={() => dispatch(toggleSelectSeminar(seminar.id))}
-                      />
+                      <div className="max-w-md">
+                        <p className="font-medium text-gray-900 text-sm">{seminar.title}</p>
+                        {seminar.description && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            {seminar.description}
+                          </p>
+                        )}
+                        <p className="sm:hidden text-xs text-gray-600 mt-1">{speaker}</p>
+                      </div>
                     </TableCell>
-                  )}
-                  <TableCell>
-                    <div className="max-w-md">
-                      <p className="font-medium text-gray-900 text-sm">{seminar.title}</p>
-                      {seminar.speakerDescription && (
-                        <p className="text-xs text-gray-500 mt-1">
-                          {seminar.speakerDescription}
-                        </p>
-                      )}
-                      <p className="sm:hidden text-xs text-gray-600 mt-1">{seminar.speaker}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-gray-700 text-sm hidden sm:table-cell">{seminar.speaker}</TableCell>
-                  {currentType === 'request' && (
-                    <TableCell className="text-gray-700 text-sm hidden md:table-cell">{seminar.phone}</TableCell>
-                  )}
-                  <TableCell className="text-gray-700 text-sm">{seminar.date}</TableCell>
-                  {currentType === 'history' && (
-                    <TableCell className="text-gray-700 text-sm hidden sm:table-cell">{seminar.likes || 0}</TableCell>
-                  )}
-                  {currentType !== 'request' && (
-                    <TableCell>
-                      <button
-                        onClick={() => dispatch(deleteSeminars([seminar.id]))}
-                        className="p-1 hover:bg-gray-100 rounded transition-colors"
-                      >
-                        <Icon name="Trash2" size={16} className="text-gray-600" />
-                      </button>
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))
+                    <TableCell className="text-gray-700 text-sm hidden sm:table-cell">{speaker}</TableCell>
+                    {currentType === 'application' && (
+                      <TableCell className="text-gray-700 text-sm hidden md:table-cell">
+                        {user?.phone || 'Не указан'}
+                      </TableCell>
+                    )}
+                    <TableCell className="text-gray-700 text-sm">{seminar.date}</TableCell>
+                    {currentType === 'history' && (
+                      <TableCell className="text-gray-700 text-sm hidden sm:table-cell">{seminar.likes || 0}</TableCell>
+                    )}
+                    {currentType !== 'application' && (
+                      <TableCell>
+                        <button
+                          onClick={() => dispatch(deleteSeminars([seminar.id]))}
+                          className="p-1 hover:bg-gray-100 rounded transition-colors"
+                        >
+                          <Icon name="Trash2" size={16} className="text-gray-600" />
+                        </button>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>

@@ -1,12 +1,15 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import type { Seminar } from '@/types/seminar';
+import type { Seminar, User, City, Role, DatabaseData } from '@/types/seminar';
 
 interface SeminarState {
   seminars: Seminar[];
+  users: User[];
+  cities: City[];
+  roles: Role[];
   filteredSeminars: Seminar[];
   loading: boolean;
   error: string | null;
-  currentType: 'future' | 'history' | 'request';
+  currentType: 'application' | 'upcoming' | 'history';
   searchQuery: string;
   page: number;
   rowsPerPage: number;
@@ -15,10 +18,13 @@ interface SeminarState {
 
 const initialState: SeminarState = {
   seminars: [],
+  users: [],
+  cities: [],
+  roles: [],
   filteredSeminars: [],
   loading: false,
   error: null,
-  currentType: 'future',
+  currentType: 'upcoming',
   searchQuery: '',
   page: 0,
   rowsPerPage: 10,
@@ -29,14 +35,14 @@ export const fetchSeminars = createAsyncThunk(
   'seminars/fetchSeminars',
   async () => {
     const response = await fetch('/db.json');
-    const data = await response.json();
-    return data.seminars as Seminar[];
+    const data = await response.json() as DatabaseData;
+    return data;
   }
 );
 
 export const deleteSeminars = createAsyncThunk(
   'seminars/deleteSeminars',
-  async (ids: number[], { getState }) => {
+  async (ids: number[]) => {
     return ids;
   }
 );
@@ -45,7 +51,7 @@ const seminarSlice = createSlice({
   name: 'seminars',
   initialState,
   reducers: {
-    setCurrentType: (state, action: PayloadAction<'future' | 'history' | 'request'>) => {
+    setCurrentType: (state, action: PayloadAction<'application' | 'upcoming' | 'history'>) => {
       state.currentType = action.payload;
       state.page = 0;
       state.selectedIds = [];
@@ -83,7 +89,10 @@ const seminarSlice = createSlice({
       })
       .addCase(fetchSeminars.fulfilled, (state, action) => {
         state.loading = false;
-        state.seminars = action.payload;
+        state.seminars = action.payload.seminars;
+        state.users = action.payload.users;
+        state.cities = action.payload.cities;
+        state.roles = action.payload.roles;
         applyFilters(state);
       })
       .addCase(fetchSeminars.rejected, (state, action) => {
@@ -102,15 +111,20 @@ const seminarSlice = createSlice({
 
 function applyFilters(state: SeminarState) {
   let filtered = state.seminars.filter(
-    seminar => seminar.type === state.currentType
+    seminar => seminar.status === state.currentType
   );
 
   if (state.searchQuery) {
     const query = state.searchQuery.toLowerCase();
     filtered = filtered.filter(
-      seminar =>
-        seminar.title.toLowerCase().includes(query) ||
-        seminar.speaker.toLowerCase().includes(query)
+      seminar => {
+        const user = state.users.find(u => u.id === seminar.userId);
+        return (
+          seminar.title.toLowerCase().includes(query) ||
+          seminar.description.toLowerCase().includes(query) ||
+          (user && user.fullName.toLowerCase().includes(query))
+        );
+      }
     );
   }
 

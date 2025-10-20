@@ -1,6 +1,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { useAppSelector } from '@/store/hooks';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -28,11 +29,12 @@ import {
 
 const formSchema = z.object({
   title: z.string().min(3, 'Название должно содержать минимум 3 символа'),
-  speaker: z.string().min(2, 'Имя спикера обязательно'),
-  speakerDescription: z.string().optional(),
+  description: z.string().min(10, 'Описание должно содержать минимум 10 символов'),
   date: z.string().min(1, 'Дата обязательна'),
-  phone: z.string().regex(/^\+7 \(\d{3}\) \d{3}-\d{2}-\d{2}$/, 'Неверный формат телефона'),
-  type: z.enum(['future', 'history', 'request']),
+  time: z.string().min(1, 'Время обязательно'),
+  photo: z.string().url('Введите корректный URL изображения'),
+  userId: z.number().min(1, 'Выберите спикера'),
+  status: z.enum(['application', 'upcoming', 'history']),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -44,15 +46,18 @@ interface SeminarFormProps {
 }
 
 export default function SeminarForm({ open, onClose, onSubmit }: SeminarFormProps) {
+  const { users } = useAppSelector((state) => state.seminars);
+  
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: '',
-      speaker: '',
-      speakerDescription: '',
+      description: '',
       date: '',
-      phone: '',
-      type: 'future',
+      time: '',
+      photo: '',
+      userId: 0,
+      status: 'upcoming',
     },
   });
 
@@ -60,17 +65,6 @@ export default function SeminarForm({ open, onClose, onSubmit }: SeminarFormProp
     onSubmit(data);
     form.reset();
     onClose();
-  };
-
-  const formatPhoneNumber = (value: string) => {
-    const numbers = value.replace(/\D/g, '');
-    
-    if (numbers.length === 0) return '';
-    if (numbers.length <= 1) return `+${numbers}`;
-    if (numbers.length <= 4) return `+${numbers.slice(0, 1)} (${numbers.slice(1)}`;
-    if (numbers.length <= 7) return `+${numbers.slice(0, 1)} (${numbers.slice(1, 4)}) ${numbers.slice(4)}`;
-    if (numbers.length <= 9) return `+${numbers.slice(0, 1)} (${numbers.slice(1, 4)}) ${numbers.slice(4, 7)}-${numbers.slice(7)}`;
-    return `+${numbers.slice(0, 1)} (${numbers.slice(1, 4)}) ${numbers.slice(4, 7)}-${numbers.slice(7, 9)}-${numbers.slice(9, 11)}`;
   };
 
   return (
@@ -98,86 +92,110 @@ export default function SeminarForm({ open, onClose, onSubmit }: SeminarFormProp
 
             <FormField
               control={form.control}
-              name="speaker"
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Описание</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Описание семинара"
+                      rows={3}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Дата</FormLabel>
+                    <FormControl>
+                      <Input placeholder="ДД.ММ.ГГГГ" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="time"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Время</FormLabel>
+                    <FormControl>
+                      <Input placeholder="ЧЧ:ММ" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="photo"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>URL фотографии</FormLabel>
+                  <FormControl>
+                    <Input placeholder="https://example.com/image.jpg" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="userId"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Спикер</FormLabel>
-                  <FormControl>
-                    <Input placeholder="ФИО спикера" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="speakerDescription"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Описание спикера (необязательно)</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Дополнительная информация о спикере"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Дата</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="phone"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Телефон</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="+7 (920) 304-89-84"
-                      {...field}
-                      onChange={(e) => {
-                        const formatted = formatPhoneNumber(e.target.value);
-                        field.onChange(formatted);
-                      }}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Тип семинара</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select 
+                    onValueChange={(value) => field.onChange(parseInt(value))} 
+                    value={field.value ? field.value.toString() : undefined}
+                  >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Выберите тип" />
+                        <SelectValue placeholder="Выберите спикера" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="future">Будущий</SelectItem>
+                      {users.map((user) => (
+                        <SelectItem key={user.id} value={user.id.toString()}>
+                          {user.fullName} - {user.speciality}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="status"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Статус семинара</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Выберите статус" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="upcoming">Будущий</SelectItem>
                       <SelectItem value="history">История</SelectItem>
-                      <SelectItem value="request">Заявка</SelectItem>
+                      <SelectItem value="application">Заявка</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
